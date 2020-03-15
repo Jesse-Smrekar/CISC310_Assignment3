@@ -35,47 +35,47 @@ Process::~Process()
     delete[] burst_times;
 }
 
-uint16_t Process::getPid()
+uint16_t Process::getPid() const
 {
     return pid;
 }
 
-uint32_t Process::getStartTime()
+uint32_t Process::getStartTime() const
 {
     return start_time;
 }
 
-uint8_t Process::getPriority()
+uint8_t Process::getPriority() const
 {
     return priority;
 }
 
-Process::State Process::getState()
+Process::State Process::getState() const
 {
     return state;
 }
 
-int8_t Process::getCpuCore()
+int8_t Process::getCpuCore() const
 {
     return core;
 }
 
-double Process::getTurnaroundTime()
+double Process::getTurnaroundTime() const
 {
     return (double)turn_time / 1000.0;
 }
 
-double Process::getWaitTime()
+double Process::getWaitTime() const
 {
     return (double)wait_time / 1000.0;
 }
 
-double Process::getCpuTime()
+double Process::getCpuTime() const
 {
     return (double)cpu_time / 1000.0;
 }
 
-double Process::getRemainingTime()
+double Process::getRemainingTime() const
 {
     return (double)remain_time / 1000.0;
 }
@@ -98,7 +98,36 @@ void Process::updateProcess(uint32_t current_time)
 {
     // use `current_time` to update turnaround time, wait time, burst times, 
     // cpu time, and remaining time
+	
 }
+
+
+
+// ------------------- ADDED FUNCTIONS -----------------------------
+
+
+uint16_t Process::getCurrentBurst() const{
+
+	return current_burst;
+
+}
+
+void Process::incrementCurrentBurst(){
+
+	current_burst ++;
+}
+    
+
+uint32_t* Process::getBurstTimes()const{
+
+	return burst_times;
+
+}
+
+
+// --------------------------------------------------------------------
+
+
 
 void Process::updateBurstTime(int burst_idx, uint32_t new_time)
 {

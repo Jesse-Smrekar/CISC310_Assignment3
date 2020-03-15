@@ -21,11 +21,14 @@ typedef struct SchedulerData {
     bool all_terminated;
 } SchedulerData;
 
+// -- Function declarations --
 void coreRunProcesses(uint8_t core_id, SchedulerData *data);
 int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex);
 void clearOutput(int num_lines);
 uint32_t currentTime();
 std::string processStateToString(Process::State state);
+// ---------------------------
+
 
 int main(int argc, char **argv)
 {
@@ -74,6 +77,28 @@ int main(int argc, char **argv)
         schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // main thread work goes here:
     int num_lines = 0;
     while (!(shared_data->all_terminated))
@@ -81,13 +106,20 @@ int main(int argc, char **argv)
         // clear output from previous iteration
         clearOutput(num_lines);
 
-        // start new processes at their appropriate start time
+		// start new processes at their appropriate start time -- ie. set Process::State = Ready
+
+
+		
+
+
 
         // determine when an I/O burst finishes and put the process back in the ready queue
 
         // sort the ready queue (if needed - based on scheduling algorithm)
 
-        // determine if all processes are in the terminated state
+		for( int i=0; i < shared_data->ready_queue.size(); i++){
+
+		}
 
         // output process status table
         num_lines = printProcessOutput(processes, shared_data->mutex);
@@ -95,6 +127,17 @@ int main(int argc, char **argv)
         // sleep 1/60th of a second
         usleep(16667);
     }
+
+
+
+
+
+
+
+
+
+
+
 
 
     // wait for threads to finish
@@ -119,8 +162,78 @@ int main(int argc, char **argv)
     return 0;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 {
+	uint32_t start, curr;
+	bool preempted = false;
+	Process *p;
+	Process::State state;
+
+
+
+
+	while (!(shared_data->all_terminated)){
+
+
+		// MUTEX ?
+
+		//check if queue[0] is ready
+		p = shared_data->ready_queue.front();
+		shared_data->ready_queue.erase(shared_data->ready_queue.begin());
+		p->setCpuCore(core_id);
+		p->setState( Process::Running, curr );
+
+		start = currentTime();
+		curr = 0;
+
+		//simulate process burst execution
+		while( curr - start < p->getBurstTimes()[p->getCurrentBurst()] ){
+
+			// MUTEX ?
+			if( p->getPriority() > shared_data->ready_queue.front()->getPriority() ){
+				preempted = true;
+				break;
+			}
+			
+			curr = currentTime();
+		}
+
+
+		// update state
+		if(preempted){
+
+			p->updateBurstTime( p->getCurrentBurst(), p->getBurstTimes()[p->getCurrentBurst()] - (curr - start) );
+			p->setState( Process::Ready, curr );
+		}
+
+		else if( sizeof(p->getBurstTimes()) - p->getCurrentBurst() == 0){
+			
+			p->incrementCurrentBurst();
+			p->setState( Process::Terminated, curr );
+		}
+
+		else{
+
+			p->incrementCurrentBurst();
+			p->setState( Process::IO, curr );
+		}
+
+
+
     // Work to be done by each core idependent of the other cores
     //  - Get process at front of ready queue
     //  - Simulate the processes running until one of the following:
@@ -133,7 +246,41 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     //     - Ready queue if time slice elapsed or process was preempted
     //  - Wait context switching time
     //  * Repeat until all processes in terminated state
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex)
 {
