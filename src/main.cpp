@@ -72,13 +72,30 @@ int main(int argc, char **argv)
 
     // launch 1 scheduling thread per cpu core
     std::thread *schedule_threads = new std::thread[num_cores];
-    for (i = 0; i < num_cores; i++)
+   /* for (i = 0; i < num_cores; i++)
     {
         schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
     }
+*/
 
 
 
+
+
+
+	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
+
+	std::cout << "PRINTING READY QUEUE" << std::endl;
+
+	for( int i=0; i < shared_data->ready_queue.size(); i++){
+
+		Process* p = *it;
+		std::cout << "Process " << i << " PID: " << p->getPid() << std::endl;
+		std::advance(it, 1);
+
+	}
+
+    schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
 
 
 
@@ -124,7 +141,7 @@ int main(int argc, char **argv)
         // output process status table
         num_lines = printProcessOutput(processes, shared_data->mutex);
 
-        // sleep 1/60th of a second
+        // sleep 1/60th of a second`
         usleep(16667);
     }
 
@@ -192,7 +209,12 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		// MUTEX ?
 
 		//check if queue[0] is ready
+		if( shared_data->ready_queue.size() < 1 ) continue;
+
 		p = shared_data->ready_queue.front();
+	
+		if( p->getState() != Process::Ready ) continue;
+
 		shared_data->ready_queue.erase(shared_data->ready_queue.begin());
 		p->setCpuCore(core_id);
 		p->setState( Process::Running, curr );
@@ -200,8 +222,13 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		start = currentTime();
 		curr = 0;
 
+		std::cout << "PID: " << p->getPid() << std::endl;
+		std::cout << "ready queue size: " << shared_data->ready_queue.size() << std::endl;
+
 		//simulate process burst execution
 		while( curr - start < p->getBurstTimes()[p->getCurrentBurst()] ){
+
+			if( shared_data->ready_queue.size() < 1 ) continue;
 
 			// MUTEX ?
 			if( p->getPriority() > shared_data->ready_queue.front()->getPriority() ){
@@ -213,23 +240,28 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		}
 
 
+
 		// update state
 		if(preempted){
-
+			std::cout << "preempted PID: " << p->getPid() << std::endl;
 			p->updateBurstTime( p->getCurrentBurst(), p->getBurstTimes()[p->getCurrentBurst()] - (curr - start) );
 			p->setState( Process::Ready, curr );
+			shared_data->ready_queue.push_back( p );
 		}
 
 		else if( sizeof(p->getBurstTimes()) - p->getCurrentBurst() == 0){
-			
+					
+			std::cout << "finished PID: " << p->getPid() << std::endl;
 			p->incrementCurrentBurst();
 			p->setState( Process::Terminated, curr );
 		}
 
 		else{
 
+			std::cout << "finished burst for PID: " << p->getPid() << std::endl;
 			p->incrementCurrentBurst();
 			p->setState( Process::IO, curr );
+			shared_data->ready_queue.push_back( p );
 		}
 
 
