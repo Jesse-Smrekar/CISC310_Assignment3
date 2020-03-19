@@ -99,10 +99,9 @@ void Process::updateProcess(uint32_t current_time){
     // use `current_time` to update turnaround time, wait time, burst times, 
     // cpu time, and remaining time
     // call this before switching state.
+    uint32_t elapsed;
+    elapsed = current_time - last_update; 
     switch( state ){
-
-        uint32_t elapsed;
-        elapsed = current_time - last_update; 
         case Process::State::Ready: 
             //when the process goes from ready to running. 
             wait_time = wait_time + elapsed; 
