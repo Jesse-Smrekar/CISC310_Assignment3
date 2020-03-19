@@ -73,13 +73,12 @@ int main(int argc, char **argv)
 
     // launch 1 scheduling thread per cpu core
     std::thread *schedule_threads = new std::thread[num_cores];
-   /* for (i = 0; i < num_cores; i++)
+    for (i = 0; i < num_cores; i++)
     {
         schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
     }
-    */
 
-	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
+/*	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
 
 	std::cout << "PRINTING READY QUEUE" << std::endl;
 
@@ -90,28 +89,77 @@ int main(int argc, char **argv)
 		std::advance(it, 1);
 
 	}
+*/
 
-    schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
+    //schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
 
+
+
+
+
+
+
+
+     /*   for( Process* p : shared_data->ready_queue ){
+
+			std::cout << "PID " << p->getPid() << std::endl;
+		}
+*/
 
     // main thread work goes here:
     int num_lines = 0;
+	bool execIO = false;
+	uint32_t startIO = 0; 
     while (!(shared_data->all_terminated))
     {
         // clear output from previous iteration
         clearOutput(num_lines);
 
 		// start new processes at their appropriate start time -- ie. set Process::State = Ready
-        for( Process* p : shared_data->ready_queue){
+        for( Process* p : processes ){
             
+                uint32_t now = currentTime();
             if( p->getState() == Process::State::NotStarted ){
 
-                uint32_t now = currentTime();
+
                 if( now - start > p->getStartTime() ){
                     p->setState( Process::State::Ready, now ); 
+					shared_data->ready_queue.push_back(p);
                 }
-            }
+         	}
         }
+
+		for( Process* p : shared_data->ready_queue ){
+            
+           uint32_t now = currentTime();
+
+           if( p->getState() == Process::State::IO ){
+
+				if( execIO ){
+
+					if( currentTime() - startIO > p->getStartTime() ){
+		                p->setState( Process::State::Ready, now ); 
+						shared_data->ready_queue.push_back(p);
+						execIO = false;
+		            }
+
+				}
+
+				else{
+
+					startIO = currentTime();
+
+				}
+
+			}
+        }
+
+		
+
+		
+		
+
+
 
         // determine when an I/O burst finishes and put the process back in the ready queue
 
@@ -215,8 +263,8 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		start = currentTime();
 		curr = 0;
 
-		std::cout << "PID: " << p->getPid() << std::endl;
-		std::cout << "ready queue size: " << shared_data->ready_queue.size() << std::endl;
+		//std::cout << "PID: " << p->getPid() << std::endl;
+		//std::cout << "ready queue size: " << shared_data->ready_queue.size() << std::endl;
 
 		//simulate process burst execution
 		while( curr - start < p->getBurstTimes()[p->getCurrentBurst()] ){
@@ -246,7 +294,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 
 		// update state
 		if(preempted ){
-			std::cout << "preempted PID: " << p->getPid() << std::endl;
+			//std::cout << "preempted PID: " << p->getPid() << std::endl;
 			p->updateBurstTime( p->getCurrentBurst(), p->getBurstTimes()[p->getCurrentBurst()] - (curr - start) );
 			p->setState( Process::Ready, curr );
 			shared_data->ready_queue.push_back( p );
@@ -254,14 +302,14 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 
 		else if( sizeof(p->getBurstTimes()) - p->getCurrentBurst() == 0){
 					
-			std::cout << "finished PID: " << p->getPid() << std::endl;
+			//std::cout << "finished PID: " << p->getPid() << std::endl;
 			p->incrementCurrentBurst();
 			p->setState( Process::State::Terminated, curr );
 		}
 
 		else{
 
-			std::cout << "finished burst for PID: " << p->getPid() << std::endl;
+			//std::cout << "finished burst for PID: " << p->getPid() << std::endl;
 			p->incrementCurrentBurst();
 			p->setState( Process::State::IO, curr );
 			shared_data->ready_queue.push_back( p );
