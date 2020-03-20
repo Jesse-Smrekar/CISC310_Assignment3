@@ -19,11 +19,15 @@ Process::Process(ProcessDetails details, uint32_t current_time)
     {
         launch_time = current_time;
     }
+	/*else{
+		launch_time = current_time + start_time; 
+	}*/
     core = -1;
     turn_time = 0;
     wait_time = 0;
     cpu_time = 0;
     remain_time = 0;
+	last_update = 0; 
     for (i = 0; i < num_bursts; i+=2)
     {
         remain_time += burst_times[i];
@@ -86,6 +90,7 @@ void Process::setState(State new_state, uint32_t current_time)
     {
         launch_time = current_time;
     }
+    last_update = current_time; 
     state = new_state;
 }
 
@@ -94,11 +99,32 @@ void Process::setCpuCore(int8_t core_num)
     core = core_num;
 }
 
-void Process::updateProcess(uint32_t current_time)
-{
+void Process::updateProcess(uint32_t current_time){
     // use `current_time` to update turnaround time, wait time, burst times, 
     // cpu time, and remaining time
-	
+    // call this before switching state.
+    uint32_t elapsed;
+    elapsed = current_time - last_update; 
+    switch( state ){
+        case( Process::State::Ready ): 
+            //when the process goes from ready to running. 
+            wait_time = wait_time + elapsed; 
+            turn_time = turn_time + elapsed; 
+            break;
+        case( Process::State::Running ):
+            //when the process goes from running to io.
+            //i.e. after process has finished executing (or is cut short).
+            cpu_time = cpu_time + elapsed;  
+            remain_time = remain_time - elapsed;  
+            burst_times[ current_burst ] = burst_times[ current_burst ] - elapsed; 
+            turn_time = turn_time + elapsed; 
+            break;
+        case( Process::State::IO ):
+            //when the process goes from io to ready.
+            turn_time = turn_time + elapsed; 
+            break; 
+    }
+    last_update = current_time; 
 }
 
 
