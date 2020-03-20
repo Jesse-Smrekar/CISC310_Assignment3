@@ -239,49 +239,49 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		//std::cout << "ready queue size: " << shared_data->ready_queue.size() << std::endl;
 
 		//simulate process burst execution
-		while( curr - start < p->getBurstTimes()[p->getCurrentBurst()] ){
+		while( curr - start < p->getCurrentBurstTime()){
 
 			if( shared_data->ready_queue.size() < 1 ) continue;
 
 			// MUTEX ?
-			if( p->getPriority() > shared_data->ready_queue.front()->getPriority() ){
-				preempted = true;
-				break;
-			}
+            if( shared_data->algorithm == ScheduleAlgorithm::PP ){
+                
+                if( p->getPriority() > shared_data->ready_queue.front()->getPriority() ){
+                    //update state 
+                    p->updateProcess( curr );
+                    p->setState( Process::Ready, curr );
+                    shared_data->ready_queue.push_back( p );
+                    break; 
+                }
+
+            }
             //check if time slice expired. 
             else if( shared_data->algorithm == ScheduleAlgorithm::RR ){
 
-                uint32_t now = currentTime();
-                if( now - start > shared_data->time_slice  ){
-                    p->updateProcess( now ); 
-                    p->setState( Process::State::Ready, now ); 
+                if( curr- start > shared_data->time_slice  ){
+		            // update state
+                    p->updateProcess( curr ); 
+                    p->setState( Process::State::Ready, curr); 
 			        shared_data->ready_queue.push_back( p );
 			        p->updateBurstTime( p->getCurrentBurst(), p->getBurstTimes()[p->getCurrentBurst()] - (curr - start) );
+                    break;
                 }
             }
 			
 			curr = currentTime();
 		}
-
-
-		// update state
-		if(preempted ){
-			//std::cout << "preempted PID: " << p->getPid() << std::endl;
-			p->updateBurstTime( p->getCurrentBurst(), p->getBurstTimes()[p->getCurrentBurst()] - (curr - start) );
-			p->setState( Process::Ready, curr );
-			shared_data->ready_queue.push_back( p );
-		}
-
-        // terminate 
-		else if( sizeof(p->getBurstTimes()) - p->getCurrentBurst() == 0){
+        // terminate if no cpu bursts are left
+        // we will always end with a CPU burst. 
+		if( p->getRemainingTime() <= 0 ){
 					
 			//std::cout << "finished PID: " << p->getPid() << std::endl;
             p->updateProcess(curr); 
 			p->incrementCurrentBurst();
 			p->setState( Process::State::Terminated, curr );
 		}
-		else{ // do IO
+		else { 
 
+            // do IO burst if there is stil bursts left. 
 			//std::cout << "finished burst for PID: " << p->getPid() << std::endl;
             p->updateProcess( curr ); 
 			p->incrementCurrentBurst();
@@ -289,7 +289,8 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 			shared_data->ready_queue.push_back( p );
 		}
 
-
+        //context switch time 
+        usleep( shared_data->context_switch * 1000 );  
 
     // Work to be done by each core idependent of the other cores
     //  - Get process at front of ready queue
