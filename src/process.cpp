@@ -104,6 +104,7 @@ void Process::updateProcess(uint32_t current_time){
     // cpu time, and remaining time
     // call this before switching state.
     uint32_t elapsed;
+    uint32_t new_burst_time;
     elapsed = current_time - last_update; 
     switch( state ){
         case Process::State::Ready: 
@@ -116,8 +117,9 @@ void Process::updateProcess(uint32_t current_time){
             //i.e. after process has finished executing (or is cut short).
             cpu_time = cpu_time + elapsed;  
             remain_time = remain_time - elapsed;  
-            //updateBurstTime( current_burst, burst_times[ current_burst ] - elapsed); 
-            //core process can handle burst time adjust. 
+
+            new_burst_time = getCurrentBurstTime() - elapsed;
+            updateBurstTime( current_burst, new_burst_time); 
             turn_time = turn_time + elapsed; 
             break;
         case( State::IO ):
