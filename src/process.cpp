@@ -35,6 +35,10 @@ Process::~Process()
     delete[] burst_times;
 }
 
+uint32_t Process::getLastUpdate() const { 
+    return last_update;
+}
+
 uint16_t Process::getPid() const
 {
     return pid;
@@ -112,7 +116,8 @@ void Process::updateProcess(uint32_t current_time){
             //i.e. after process has finished executing (or is cut short).
             cpu_time = cpu_time + elapsed;  
             remain_time = remain_time - elapsed;  
-            burst_times[ current_burst ] = burst_times[ current_burst ] - elapsed; 
+            //updateBurstTime( current_burst, burst_times[ current_burst ] - elapsed); 
+            //core process can handle burst time adjust. 
             turn_time = turn_time + elapsed; 
             break;
         case( State::IO ):
@@ -127,6 +132,9 @@ void Process::updateProcess(uint32_t current_time){
 
 // ------------------- ADDED FUNCTIONS -----------------------------
 
+uint32_t Process::getCurrentBurstTime() const { 
+    return burst_times[current_burst];
+}
 
 uint16_t Process::getCurrentBurst() const{
 
