@@ -23,7 +23,7 @@ typedef struct SchedulerData {
 
 // -- Function declarations --
 void coreRunProcesses(uint8_t core_id, SchedulerData *data);
-int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex);
+int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex, SchedulerData* shared_data );
 void clearOutput(int num_lines);
 uint32_t currentTime();
 std::string processStateToString(Process::State state);
@@ -83,18 +83,13 @@ int main(int argc, char **argv)
 	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
 
 	std::cout << "PRINTING READY QUEUE" << std::endl;
-
 	for( int i=0; i < shared_data->ready_queue.size(); i++){
 
 		Process* p = *it;
 		std::cout << "Process " << i << " PID: " << p->getPid() << std::endl;
 		std::advance(it, 1);
-
 	}
 
-    for( Process* p : shared_data->ready_queue ){
-         std::cout << "PID " << p->getPid() << std::endl;
-	}
 
     // main thread work goes here:
     int num_lines = 0;
@@ -129,7 +124,7 @@ int main(int argc, char **argv)
         sort( shared_data->ready_queue, shared_data->algorithm);
 
         // output process status table
-        num_lines = printProcessOutput(processes, shared_data->mutex);
+        num_lines = printProcessOutput(processes, shared_data->mutex, shared_data);
 
         // sleep 1/60th of a second`
         usleep(16667);
@@ -213,8 +208,6 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 	Process::State state;
 
 	while (!(shared_data->all_terminated)){
-
-        bool timeSliceExpired = false; 
 
 		// MUTEX ?
 		//check if queue[0] is ready
@@ -304,7 +297,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 }
 
 
-int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex)
+int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex, SchedulerData* shared_data )
 {
     int i;
     int num_lines = 2;
@@ -330,6 +323,17 @@ int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex)
             num_lines++;
         }
     }
+	std::cout << "PRINTING READY QUEUE" << std::endl;
+    num_lines++;
+	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
+	for( int i=0; i < shared_data->ready_queue.size(); i++){
+
+		Process* p = *it;
+		std::cout << "Process " << i << " PID: " << p->getPid() << std::endl;
+		std::advance(it, 1);
+        num_lines++; 
+	}
+
     return num_lines;
 }
 
