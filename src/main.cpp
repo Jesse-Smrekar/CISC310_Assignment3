@@ -75,8 +75,10 @@ int main(int argc, char **argv)
     std::thread *schedule_threads = new std::thread[num_cores];
     for (i = 0; i < num_cores; i++)
     {
-        schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
+        //schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
     }
+
+    schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
 
 	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
 
@@ -90,9 +92,7 @@ int main(int argc, char **argv)
 
 	}
 
-    //schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
-
-     for( Process* p : shared_data->ready_queue ){
+    for( Process* p : shared_data->ready_queue ){
          std::cout << "PID " << p->getPid() << std::endl;
 	}
 
@@ -105,11 +105,10 @@ int main(int argc, char **argv)
         clearOutput(num_lines);
 
 		// start new processes at their appropriate start time -- ie. set Process::State = Ready
+        uint32_t now = currentTime();
         for( Process* p : processes ){
-            
-            uint32_t now = currentTime();
+
             if( p->getState() == Process::State::NotStarted ){
-                
                 if( now - start > p->getStartTime() ){
                     p->setState( Process::State::Ready, now ); 
 					shared_data->ready_queue.push_back(p);
@@ -125,7 +124,6 @@ int main(int argc, char **argv)
                 }
             }
         }
-
 
         // sort the ready queue (if needed - based on scheduling algorithm)
         sort( shared_data->ready_queue, shared_data->algorithm);
@@ -218,9 +216,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 
         bool timeSliceExpired = false; 
 
-
 		// MUTEX ?
-
 		//check if queue[0] is ready
 		if( shared_data->ready_queue.size() < 1 ) continue;
 
@@ -228,12 +224,12 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 	
 		if( p->getState() != Process::Ready ) continue;
 
+		start = currentTime();
+		curr = start;
+
 		shared_data->ready_queue.erase(shared_data->ready_queue.begin());
 		p->setCpuCore(core_id);
 		p->setState( Process::Running, curr );
-
-		start = currentTime();
-		curr = 0;
 
 		//std::cout << "PID: " << p->getPid() << std::endl;
 		//std::cout << "ready queue size: " << shared_data->ready_queue.size() << std::endl;
@@ -258,7 +254,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             //check if time slice expired. 
             else if( shared_data->algorithm == ScheduleAlgorithm::RR ){
 
-                if( curr- start > shared_data->time_slice  ){
+                if( curr - start > shared_data->time_slice  ){
 		            // update state
                     p->updateProcess( curr ); 
                     p->setState( Process::State::Ready, curr); 

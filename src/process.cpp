@@ -91,6 +91,7 @@ void Process::setState(State new_state, uint32_t current_time)
         launch_time = current_time;
     }
     last_update = current_time; 
+    //printf("pid: %d, last_update: %u\n", pid, last_update ); 
     state = new_state;
 }
 
@@ -106,6 +107,7 @@ void Process::updateProcess(uint32_t current_time){
     uint32_t elapsed;
     uint32_t new_burst_time;
     elapsed = current_time - last_update; 
+    //printf("last_update: %u, currentTime: %u elapsed: %u\n", last_update, current_time, elapsed);
     switch( state ){
         case Process::State::Ready: 
             //when the process goes from ready to running. 
