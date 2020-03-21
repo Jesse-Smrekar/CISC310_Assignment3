@@ -115,7 +115,7 @@ int main(int argc, char **argv)
                 if( now - p->getLastUpdate() > io_burst  ){
                     p->updateProcess(now); 
                     p->setState( Process::State::Ready, now ); 
-                    shared_data->ready_queue.push_back(p);
+					shared_data->ready_queue.push_back(p);
                 }
             }
         }
@@ -239,6 +239,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                     //update state 
                     p->updateProcess( curr );
                     p->setState( Process::Ready, curr );
+		            shared_data->ready_queue.erase(shared_data->ready_queue.begin());
                     shared_data->ready_queue.push_back( p );
                     break; 
                 }
@@ -251,12 +252,12 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		            // update state
                     p->updateProcess( curr ); 
                     p->setState( Process::State::Ready, curr); 
+		            shared_data->ready_queue.erase(shared_data->ready_queue.begin());
 			        shared_data->ready_queue.push_back( p );
 			        p->updateBurstTime( p->getCurrentBurst(), p->getBurstTimes()[p->getCurrentBurst()] - (curr - start) );
                     break;
                 }
             }
-			
 			curr = currentTime();
 		}
         // terminate if no cpu bursts are left
@@ -267,6 +268,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             p->updateProcess(curr); 
 			p->incrementCurrentBurst();
 			p->setState( Process::State::Terminated, curr );
+		    shared_data->ready_queue.erase(shared_data->ready_queue.begin());
 		}
 		else { 
 
@@ -275,6 +277,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             p->updateProcess( curr ); 
 			p->incrementCurrentBurst();
 			p->setState( Process::State::IO, curr );
+		    shared_data->ready_queue.erase(shared_data->ready_queue.begin());
 			shared_data->ready_queue.push_back( p );
 		}
 
