@@ -8,6 +8,7 @@ Process::Process(ProcessDetails details, uint32_t current_time)
     start_time = details.start_time;
     num_bursts = details.num_bursts;
     current_burst = 0;
+	last_update = current_time;
     burst_times = new uint32_t[num_bursts];
     for (i = 0; i < num_bursts; i++)
     {
@@ -108,13 +109,15 @@ void Process::updateProcess(uint32_t current_time){
     uint32_t new_burst_time;
     elapsed = current_time - last_update; 
     //printf("last_update: %u, currentTime: %u elapsed: %u\n", last_update, current_time, elapsed);
-    switch( state ){
-        case Process::State::Ready: 
+    
+		//std::cout << "State= " << State::IO << std::endl;
+        if( state == State::Ready ){ 
             //when the process goes from ready to running. 
+
             wait_time = wait_time + elapsed; 
             turn_time = turn_time + elapsed; 
-            break;
-        case( State::Running ):
+        }
+        else if( state == State::Running ){
             //when the process goes from running to io.
             //i.e. after process has finished executing (or is cut short).
             cpu_time = cpu_time + elapsed;  
@@ -123,12 +126,12 @@ void Process::updateProcess(uint32_t current_time){
             new_burst_time = getCurrentBurstTime() - elapsed;
             updateBurstTime( current_burst, new_burst_time); 
             turn_time = turn_time + elapsed; 
-            break;
-        case( State::IO ):
+        }
+        else if( state ==  State::IO ){
             //when the process goes from io to ready.
             turn_time = turn_time + elapsed; 
-            break; 
-    }
+       	}
+    
     last_update = current_time; 
 }
 

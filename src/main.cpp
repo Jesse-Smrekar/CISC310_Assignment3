@@ -76,10 +76,10 @@ int main(int argc, char **argv)
     std::thread *schedule_threads = new std::thread[num_cores];
     for (i = 0; i < num_cores; i++)
     {
-        schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
+        //schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
     }
 
-    //schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
+    schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
 
 	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
 
@@ -96,13 +96,11 @@ int main(int argc, char **argv)
     int num_lines = 0;
 	uint32_t startIO = 0; 
 
-
     while (!(shared_data->all_terminated))
     {
-
-        int num_terminated = 0; 
         // clear output from previous iteration
         clearOutput(num_lines);
+		int num_terminated = 0; 
 
 		// start new processes at their appropriate start time -- ie. set Process::State = Ready
         std::lock_guard<std::mutex> lock(shared_data->mutex);
@@ -125,9 +123,22 @@ int main(int argc, char **argv)
 					shared_data->ready_queue.push_back(p);
                 }
             }
-            if( p->getState() == Process::State::Terminated ){
-                num_terminated++; 
-            }
+
+			if( p->getState() == Process::State::Terminated ){
+		     	num_terminated++; 
+		    }
+        }
+
+		for( Process* p : processes ){
+
+			if( p->getState() == Process::State::Ready){
+				p->updateProcess(now); 
+			}
+		}
+		 
+
+        if( num_terminated == processes.size() ){
+            shared_data->all_terminated = true; 
         }
 
 
@@ -140,10 +151,6 @@ int main(int argc, char **argv)
 
         // sleep 1/60th of a second`
         usleep(16667);
-        
-        if( num_terminated == processes.size() ){
-            shared_data->all_terminated = true; 
-        }
     }
 
     // wait for threads to finish
@@ -151,7 +158,6 @@ int main(int argc, char **argv)
     {
         schedule_threads[i].join();
     }
-
 
     // print final statistics
     //  - CPU utilization
@@ -245,15 +251,21 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		//std::cout << "ready queue size: " << shared_data->ready_queue.size() << std::endl;
 
 		//simulate process burst execution
-		while( curr - start <= p->getCurrentBurstTime()){
-            
+		while( curr - start < p->getCurrentBurstTime()){
+
+			if( shared_data->ready_queue.size() < 1 ) continue;
+
+			// MUTEX ?
+
             if( shared_data->algorithm == ScheduleAlgorithm::PP ){
+                
                 if( p->getPriority() > shared_data->ready_queue.front()->getPriority() ){
 
                     std::lock_guard<std::mutex> lock(shared_data->mutex);
                     //update state 
                     p->updateProcess( curr );
                     p->setState( Process::Ready, curr );
+					p->setCpuCore(-1);
                     shared_data->ready_queue.push_back( p );
                     shared_data->mutex.unlock();
                     break; 
@@ -268,6 +280,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                     std::lock_guard<std::mutex> lock(shared_data->mutex);
 		            // update state
                     p->updateProcess( curr ); 
+					p->setCpuCore(-1);
                     p->setState( Process::State::Ready, curr); 
 			        shared_data->ready_queue.push_back( p );
 
@@ -286,6 +299,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		if( p->getRemainingTime() <= 0 ){
 					
 			//std::cout << "finished PID: " << p->getPid() << std::endl;
+			p->setCpuCore(-1);
 			p->incrementCurrentBurst();
 			p->setState( Process::State::Terminated, curr );
 
@@ -295,6 +309,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             // do IO burst if there is stil bursts left. 
 			//std::cout << "finished burst for PID: " << p->getPid() << std::endl;
 			p->incrementCurrentBurst();
+			p->setCpuCore(-1);
 			p->setState( Process::State::IO, curr );
 		}
 
@@ -341,7 +356,7 @@ int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex, Sche
             double remain_time = processes[i]->getRemainingTime();
             printf("| %5u | %8u | %10s | %4s | %9.1lf | %9.1lf | %8.1lf | %11.1lf |\n", 
                    pid, priority, process_state.c_str(), cpu_core.c_str(), turn_time, 
-                   wait_time, cpu_time, remain_time);
+                   wait_time, cpu_time, (double)std::max((int)remain_time, 0));
             num_lines++;
         }
     }
