@@ -65,6 +65,7 @@ int main(int argc, char **argv)
         if (p->getState() == Process::State::Ready)
         {
             shared_data->ready_queue.push_back(p);
+            printf("Pushed %d onto the queue\n", p->getPid()); 
         }
     }
 
@@ -100,11 +101,13 @@ int main(int argc, char **argv)
         clearOutput(num_lines);
 
 		// start new processes at their appropriate start time -- ie. set Process::State = Ready
+        std::lock_guard<std::mutex> lock(shared_data->mutex);
         uint32_t now = currentTime();
         for( Process* p : processes ){
 
             if( p->getState() == Process::State::NotStarted ){
-                if( now - start > p->getStartTime() ){
+
+                if( now - start >= p->getStartTime() ){
                     p->setState( Process::State::Ready, now ); 
 					shared_data->ready_queue.push_back(p);
                 }
@@ -120,8 +123,10 @@ int main(int argc, char **argv)
             }
         }
 
+
         // sort the ready queue (if needed - based on scheduling algorithm)
         sort( shared_data->ready_queue, shared_data->algorithm);
+        shared_data->mutex.unlock(); 
 
         // output process status table
         num_lines = printProcessOutput(processes, shared_data->mutex, shared_data);
@@ -233,14 +238,17 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 			if( shared_data->ready_queue.size() < 1 ) continue;
 
 			// MUTEX ?
+
             if( shared_data->algorithm == ScheduleAlgorithm::PP ){
                 
                 if( p->getPriority() > shared_data->ready_queue.front()->getPriority() ){
+
+                    std::lock_guard<std::mutex> lock(shared_data->mutex);
                     //update state 
                     p->updateProcess( curr );
                     p->setState( Process::Ready, curr );
-		            shared_data->ready_queue.erase(shared_data->ready_queue.begin());
                     shared_data->ready_queue.push_back( p );
+                    shared_data->mutex.unlock();
                     break; 
                 }
 
@@ -249,26 +257,32 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             else if( shared_data->algorithm == ScheduleAlgorithm::RR ){
 
                 if( curr - start > shared_data->time_slice  ){
+
+                    std::lock_guard<std::mutex> lock(shared_data->mutex);
 		            // update state
                     p->updateProcess( curr ); 
                     p->setState( Process::State::Ready, curr); 
-		            shared_data->ready_queue.erase(shared_data->ready_queue.begin());
 			        shared_data->ready_queue.push_back( p );
-			        p->updateBurstTime( p->getCurrentBurst(), p->getBurstTimes()[p->getCurrentBurst()] - (curr - start) );
+
+                    shared_data->mutex.unlock();
                     break;
                 }
             }
+
 			curr = currentTime();
 		}
         // terminate if no cpu bursts are left
         // we will always end with a CPU burst. 
+
+        std::lock_guard<std::mutex> lock(shared_data->mutex);
+        p->updateProcess(curr); 
 		if( p->getRemainingTime() <= 0 ){
 					
 			//std::cout << "finished PID: " << p->getPid() << std::endl;
             p->updateProcess(curr); 
 			p->incrementCurrentBurst();
 			p->setState( Process::State::Terminated, curr );
-		    shared_data->ready_queue.erase(shared_data->ready_queue.begin());
+
 		}
 		else { 
 
@@ -277,9 +291,9 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             p->updateProcess( curr ); 
 			p->incrementCurrentBurst();
 			p->setState( Process::State::IO, curr );
-		    shared_data->ready_queue.erase(shared_data->ready_queue.begin());
-			shared_data->ready_queue.push_back( p );
 		}
+
+        shared_data->mutex.unlock();
 
         //context switch time 
         usleep( shared_data->context_switch * 1000 );  

@@ -104,7 +104,7 @@ void Process::updateProcess(uint32_t current_time){
     // use `current_time` to update turnaround time, wait time, burst times, 
     // cpu time, and remaining time
     // call this before switching state.
-    uint32_t elapsed;
+    int32_t elapsed;
     uint32_t new_burst_time;
     elapsed = current_time - last_update; 
     //printf("last_update: %u, currentTime: %u elapsed: %u\n", last_update, current_time, elapsed);
