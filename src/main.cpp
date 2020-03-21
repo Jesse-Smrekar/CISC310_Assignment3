@@ -65,7 +65,7 @@ int main(int argc, char **argv)
         if (p->getState() == Process::State::Ready)
         {
             shared_data->ready_queue.push_back(p);
-            printf("Pushed %d onto the queue\n", p->getPid()); 
+           // printf("Pushed %d onto the queue\n", p->getPid()); 
         }
     }
 
@@ -76,18 +76,18 @@ int main(int argc, char **argv)
     std::thread *schedule_threads = new std::thread[num_cores];
     for (i = 0; i < num_cores; i++)
     {
-        //schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
+        schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
     }
 
-    schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
+    //schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
 
 	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
 
-	std::cout << "PRINTING READY QUEUE" << std::endl;
+	//std::cout << "PRINTING READY QUEUE" << std::endl;
 	for( int i=0; i < shared_data->ready_queue.size(); i++){
 
 		Process* p = *it;
-		std::cout << "Process " << i << " PID: " << p->getPid() << std::endl;
+		//std::cout << "Process " << i << " PID: " << p->getPid() << std::endl;
 		std::advance(it, 1);
 	}
 
@@ -360,13 +360,13 @@ int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex, Sche
             num_lines++;
         }
     }
-	std::cout << "PRINTING READY QUEUE" << std::endl;
+	//std::cout << "PRINTING READY QUEUE" << std::endl;
     num_lines++;
 	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
 	for( int i=0; i < shared_data->ready_queue.size(); i++){
 
 		Process* p = *it;
-		std::cout << "Process " << i << " PID: " << p->getPid() << std::endl;
+		//std::cout << "Process " << i << " PID: " << p->getPid() << std::endl;
 		std::advance(it, 1);
         num_lines++; 
 	}
