@@ -76,10 +76,10 @@ int main(int argc, char **argv)
     std::thread *schedule_threads = new std::thread[num_cores];
     for (i = 0; i < num_cores; i++)
     {
-        //schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
+        schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
     }
 
-    schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
+    //schedule_threads[0] = std::thread(coreRunProcesses, 0, shared_data);
 
 	std::list<Process*>::iterator it = shared_data->ready_queue.begin();
 
@@ -95,8 +95,12 @@ int main(int argc, char **argv)
     // main thread work goes here:
     int num_lines = 0;
 	uint32_t startIO = 0; 
+
+
     while (!(shared_data->all_terminated))
     {
+
+        int num_terminated = 0; 
         // clear output from previous iteration
         clearOutput(num_lines);
 
@@ -121,6 +125,9 @@ int main(int argc, char **argv)
 					shared_data->ready_queue.push_back(p);
                 }
             }
+            if( p->getState() == Process::State::Terminated ){
+                num_terminated++; 
+            }
         }
 
 
@@ -133,6 +140,10 @@ int main(int argc, char **argv)
 
         // sleep 1/60th of a second`
         usleep(16667);
+        
+        if( num_terminated == processes.size() ){
+            shared_data->all_terminated = true; 
+        }
     }
 
     // wait for threads to finish
@@ -140,6 +151,7 @@ int main(int argc, char **argv)
     {
         schedule_threads[i].join();
     }
+
 
     // print final statistics
     //  - CPU utilization
@@ -233,14 +245,9 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		//std::cout << "ready queue size: " << shared_data->ready_queue.size() << std::endl;
 
 		//simulate process burst execution
-		while( curr - start < p->getCurrentBurstTime()){
-
-			if( shared_data->ready_queue.size() < 1 ) continue;
-
-			// MUTEX ?
-
+		while( curr - start <= p->getCurrentBurstTime()){
+            
             if( shared_data->algorithm == ScheduleAlgorithm::PP ){
-                
                 if( p->getPriority() > shared_data->ready_queue.front()->getPriority() ){
 
                     std::lock_guard<std::mutex> lock(shared_data->mutex);
