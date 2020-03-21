@@ -279,7 +279,6 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 		if( p->getRemainingTime() <= 0 ){
 					
 			//std::cout << "finished PID: " << p->getPid() << std::endl;
-            p->updateProcess(curr); 
 			p->incrementCurrentBurst();
 			p->setState( Process::State::Terminated, curr );
 
@@ -288,7 +287,6 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 
             // do IO burst if there is stil bursts left. 
 			//std::cout << "finished burst for PID: " << p->getPid() << std::endl;
-            p->updateProcess( curr ); 
 			p->incrementCurrentBurst();
 			p->setState( Process::State::IO, curr );
 		}
